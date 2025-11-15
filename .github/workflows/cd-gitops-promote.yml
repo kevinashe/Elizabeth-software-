@@ -1,0 +1,137 @@
+name: CD — GitOps Promote
+
+on:
+  workflow_run:
+    workflows: ["CI — Build, Test, Scan, Push"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+env:
+  INFRA_REPO: myorg/infra-repo
+  INFRA_BRANCH: main
+  SERVICE_NAME: my-service
+
+jobs:
+  create-promotion-pr:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get workflow run details
+        id: workflow-info
+        run: |
+          echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=main-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPO }}
+          token: ${{ secrets.INFRA_REPO_PAT }}
+          path: infra
+
+      - name: Configure git
+        working-directory: infra
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Create promotion branch
+        id: create-branch
+        working-directory: infra
+        env:
+          IMAGE_TAG: ${{ steps.workflow-info.outputs.image_tag }}
+          SHORT_SHA: ${{ steps.workflow-info.outputs.short_sha }}
+        run: |
+          BRANCH="promote/${{ env.SERVICE_NAME }}/${IMAGE_TAG}"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Update Helm values
+        working-directory: infra
+        env:
+          IMAGE_TAG: ${{ steps.workflow-info.outputs.image_tag }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+        run: |
+          # Update image tag in Helm values
+          VALUES_FILE="charts/${SERVICE_NAME}/values.yaml"
+
+          if [ -f "$VALUES_FILE" ]; then
+            yq eval ".image.tag = \"${IMAGE_TAG}\"" -i "$VALUES_FILE"
+            git add "$VALUES_FILE"
+          else
+            echo "Warning: $VALUES_FILE not found, skipping Helm update"
+          fi
+
+          # Alternatively, update Kustomize or ArgoCD Application
+          # KUSTOMIZE_FILE="overlays/production/kustomization.yaml"
+          # yq eval ".images[0].newTag = \"${IMAGE_TAG}\"" -i "$KUSTOMIZE_FILE"
+
+      - name: Commit changes
+        working-directory: infra
+        env:
+          IMAGE_TAG: ${{ steps.workflow-info.outputs.image_tag }}
+          SHORT_SHA: ${{ steps.workflow-info.outputs.short_sha }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+        run: |
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore(${SERVICE_NAME}): promote image to ${IMAGE_TAG}
+
+          Source commit: ${{ steps.workflow-info.outputs.sha }}
+          Workflow: ${{ github.event.workflow_run.html_url }}"
+
+      - name: Push branch
+        working-directory: infra
+        run: |
+          git push origin "${{ steps.create-branch.outputs.branch }}"
+
+      - name: Create pull request
+        working-directory: infra
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_REPO_PAT }}
+          IMAGE_TAG: ${{ steps.workflow-info.outputs.image_tag }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+        run: |
+          gh pr create \
+            --title "🚀 Promote ${SERVICE_NAME} to ${IMAGE_TAG}" \
+            --body "## Image Promotion
+
+          **Service:** \`${SERVICE_NAME}\`
+          **Image Tag:** \`${IMAGE_TAG}\`
+          **Source Commit:** \`${{ steps.workflow-info.outputs.sha }}\`
+          **Workflow:** ${{ github.event.workflow_run.html_url }}
+
+          ### Changes
+          - Updated image tag in Helm values
+
+          ### Checklist
+          - [ ] Review image scan results
+          - [ ] Verify SBOM is generated
+          - [ ] Check deployment configuration
+          - [ ] Approve and merge to deploy" \
+            --base "${{ env.INFRA_BRANCH }}" \
+            --head "${{ steps.create-branch.outputs.branch }}" \
+            --label "gitops,automated-promotion"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "### ✅ GitOps Promotion PR Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** \`${{ env.SERVICE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** \`${{ steps.workflow-info.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ steps.create-branch.outputs.branch }}\`" >> $GITHUB_STEP_SUMMARY

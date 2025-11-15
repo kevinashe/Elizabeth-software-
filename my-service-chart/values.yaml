@@ -1,0 +1,88 @@
+replicaCount: 2
+
+image:
+  repository: <your-registry>.azurecr.io/my-service
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 3000
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+ingress:
+  enabled: true
+  ingressClassName: azure/application-gateway # or nginx/contour/etc
+  hosts:
+    - host: my-service.example.com
+      paths: ["/"]
+  tls: []
+  annotations:
+    kubernetes.io/ingress.class: "azure/application-gateway"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+env:
+  - name: NODE_ENV
+    value: production
+
+secrets:
+  useAzureKeyVaultCSI: true
+  mountPath: /mnt/secrets
+  keys: [] # list of secret names to mount
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 60
+
+serviceAccount:
+  create: true
+  name: ""
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+otel:
+  enabled: true
+  collectorServiceName: otel-collector
+  annotations:
+    otel.auto.inject: "true"
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 2000
+
+podAnnotations: {}
+podLabels: {}
+
+extraVolumes: []
+extraVolumeMounts: []

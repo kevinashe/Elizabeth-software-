@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "prefix": {
+      "value": "platdev"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "env": {
+      "value": "dev"
+    },
+    "tags": {
+      "value": {
+        "owner": "platform",
+        "env": "dev"
+      }
+    },
+    "adminObjectIds": {
+      "value": [
+        "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+      ]
+    },
+    "acrSku": {
+      "value": "Standard"
+    },
+    "aksNodeCount": {
+      "value": 3
+    },
+    "aksNodeVmSize": {
+      "value": "Standard_D4s_v3"
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": ""
+    }
+  }
+}

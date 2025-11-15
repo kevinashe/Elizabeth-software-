@@ -1,0 +1,7 @@
+tenant_id           = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+subscription_id     = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+location            = "eastus"
+resource_group_name = "platform-rg"
+env                 = "dev"
+prefix              = "plat"
+admin_object_ids    = ["xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"]

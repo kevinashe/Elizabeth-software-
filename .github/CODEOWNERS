@@ -1,0 +1,22 @@
+# CODEOWNERS file for automatic PR review assignments
+
+# Default owners for everything in the repo
+*                                   @myorg/platform-team
+
+# Infrastructure and deployment configuration
+/terraform/                         @myorg/platform-team @myorg/sre-team
+/bicep/                            @myorg/platform-team @myorg/sre-team
+/.github/workflows/                @myorg/platform-team @myorg/devops-team
+
+# Helm charts and Kubernetes manifests
+/my-service-chart/                 @myorg/platform-team @myorg/sre-team
+
+# API definitions and contracts
+/proto/                            @myorg/api-team
+/openapi/                          @myorg/api-team
+
+# Code generation tools
+/tools/                            @myorg/platform-team
+
+# Security-sensitive files
+/.github/workflows/security-*.yml  @myorg/security-team

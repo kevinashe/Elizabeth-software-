@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "my-service.fullname" . }}
+  labels:
+    app: {{ include "my-service.name" . }}
+    chart: {{ include "my-service.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "my-service.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "my-service.name" . }}
+        release: {{ .Release.Name }}
+      annotations:
+{{ toYaml .Values.podAnnotations | indent 8 }}
+    spec:
+      serviceAccountName: {{ include "my-service.serviceAccountName" . }}
+      securityContext:
+{{ toYaml .Values.securityContext | indent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+          env:
+{{ toYaml .Values.env | indent 12 }}
+          volumeMounts:
+{{ toYaml .Values.extraVolumeMounts | indent 12 }}
+          readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 12 }}
+          livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 12 }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+{{ toYaml .Values.extraVolumes | indent 6 }}
+{{- if .Values.secrets.useAzureKeyVaultCSI }}
+        - name: azure-keyvault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "azure-kv-provider"
+{{- end }}
+{{- if .Values.otel.enabled }}
+        - name: otel-collector-config
+          configMap:
+            name: {{ .Values.otel.collectorServiceName }}
+{{- end }}

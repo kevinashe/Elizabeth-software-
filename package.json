@@ -1,0 +1,13 @@
+{
+  "name": "devmind",
+  "version": "1.0.0",
+  "description": "DevMind - AI-Powered Development Platform",
+  "private": true,
+  "scripts": {
+    "build": "cd dashboard && npm install --legacy-peer-deps && npm run build",
+    "dev": "cd dashboard && npm install --legacy-peer-deps && npm run dev"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

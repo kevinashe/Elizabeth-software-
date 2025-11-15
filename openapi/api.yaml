@@ -1,0 +1,99 @@
+openapi: 3.0.3
+info:
+  title: SD Platform External API
+  version: "1.0.0"
+  description: API for managing requirements in the SD Platform
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+
+paths:
+  /requirements:
+    post:
+      summary: Create requirement
+      operationId: createRequirement
+      tags:
+        - Requirements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Requirement'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResponse'
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+
+  /requirements/{id}:
+    get:
+      summary: Get requirement
+      operationId: getRequirement
+      tags:
+        - Requirements
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Requirement ID
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+        '404':
+          description: Not found
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Requirement:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier
+        title:
+          type: string
+          description: Requirement title
+        description:
+          type: string
+          description: Detailed description
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags for categorization
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional metadata
+      required:
+        - title
+
+    CreateResponse:
+      type: object
+      properties:
+        req:
+          $ref: '#/components/schemas/Requirement'
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp of creation
+      required:
+        - req
+        - created_at

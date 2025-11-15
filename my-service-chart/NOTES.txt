@@ -1,0 +1,7 @@
+Thank you for installing my-service.
+
+To access service:
+  kubectl port-forward svc/{{ include "my-service.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+Image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+Secrets via Azure Key Vault CSI mounted at {{ .Values.secrets.mountPath }}

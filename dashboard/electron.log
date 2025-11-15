@@ -1,0 +1,5 @@
+
+> sd-platform-dashboard@0.1.0 dev:electron
+> concurrently "NODE_ENV=development vite" "wait-on http://localhost:3000 && NODE_ENV=development electron ."
+
+sh: 1: concurrently: not found

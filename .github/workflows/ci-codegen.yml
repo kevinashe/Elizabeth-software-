@@ -1,0 +1,84 @@
+name: CI — IDL Codegen & Check
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    paths:
+      - "proto/**"
+      - "openapi/**"
+      - "tools/**"
+
+jobs:
+  codegen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "25.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install protoc plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python gRPC tools
+        run: |
+          pip install grpcio grpcio-tools
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install TypeScript codegen tools
+        run: |
+          npm install -g ts-proto
+          npm install -g @openapitools/openapi-generator-cli
+
+      - name: Run code generation
+        run: |
+          chmod +x tools/build-codegen.sh proto/gen.sh openapi/gen.sh
+          ./tools/build-codegen.sh
+
+      - name: Check for unstaged changes
+        run: |
+          git add -N services/
+          if [ -n "$(git diff --name-only services/)" ]; then
+            echo "### ❌ Generated code is out of sync" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The following files have changes:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            git diff --name-only services/ >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please run \`./tools/build-codegen.sh\` and commit the changes." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "### ✅ Generated code is up to date" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload generated artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-code-diff
+          path: services/
+          retention-days: 7

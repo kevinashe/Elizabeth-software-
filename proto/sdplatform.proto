@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package sdplatform.v1;
+
+option go_package = "github.com/example/sdplatform/gen/go;sdplatform";
+option java_multiple_files = true;
+option java_package = "com.example.sdplatform";
+option py_generic_services = false;
+
+message Requirement {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  repeated string tags = 4;
+  map<string,string> metadata = 5;
+}
+
+message GetRequest {
+  string id = 1;
+}
+
+message CreateResponse {
+  Requirement req = 1;
+  string created_at = 2;
+}
+
+service RequirementService {
+  rpc CreateRequirement (Requirement) returns (CreateResponse);
+  rpc GetRequirement (GetRequest) returns (Requirement);
+}
