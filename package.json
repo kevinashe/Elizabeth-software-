@@ -8,6 +8,6 @@
     "dev": "cd dashboard && npm install --legacy-peer-deps && npm run dev"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^5.2.1"
   }
 }
